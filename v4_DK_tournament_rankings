@@ -1,0 +1,325 @@
+### NOTE: this is now out of date with the rest of the project
+
+import pandas as pd
+import numpy as np
+from pandas import *
+import csv
+import os
+import matplotlib.pyplot as plt
+import math
+import statistics as stat
+import mysql.connector
+
+
+base_path = os.getcwd()
+print(base_path)
+
+db = mysql.connector.connect(
+    host = "localhost",
+    user = "root",
+    passwd = "",
+    database = "")
+
+mycursor = db.cursor(buffered =True)
+
+
+#current tournament info
+record_id = '2219' # enter record_id for the tournament from tournament_info_2 table
+
+query_1 = "SELECT course FROM tournament_info_2 WHERE record_id = %s" 
+samp_1 = (record_id,)
+mycursor.execute(query_1,samp_1)
+course = mycursor.fetchall()[0][0]
+print(course)
+
+
+
+#donwload touranment field list from draftkings website
+DK = pd.read_csv('Field.csv')
+field = DK.iloc[0:,2].tolist()
+salary = DK.iloc[0:,5].tolist()
+
+
+#AVG OVER LAST 10 tournaments
+
+# I may consider changing this to looking just over the last 10 tournaments total, instead of the players last 10 tournaments.
+# For example, they may have missed a lot of cuts recently but played really well before that 
+#Inclusion of cut players would assist in this very well
+
+# Read each name from the field and compile data
+query_1 = "SELECT * FROM standings WHERE name = %s "
+
+recent=[]
+#plyer =[]
+#SG_Tee_avg=[]
+#SG_App_avg=[]
+#SG_Arnd_avg=[]
+#SG_Putt_avg=[]
+
+for i in range(len(field)):
+    #Grab all the data from stadnings table for a given player
+    samp_1 = (field[i],)
+    mycursor.execute(query_1,samp_1)
+    results_1 = mycursor.fetchall()
+    
+    short_res = results_1[len(results_1)-10:] # just the results of the last 10 tournaments
+    #pull out the columns needed
+    sg_tee=[]
+    sg_app=[]
+    sg_arnd=[]
+    sg_putt=[]
+    for j in range(len(short_res)):
+        sg_tee.append(short_res[j][9])
+        sg_app.append(short_res[j][10])
+        sg_arnd.append(short_res[j][11])
+        sg_putt.append(short_res[j][12])
+    
+    # Average stats over the players last 10 PGA tournaments
+
+    if len(short_res) > 0:
+        Tee_avg = np.mean(sg_tee)
+        rec_Tee_sd = np.std(sg_tee)
+        
+        App_avg = np.mean(sg_app)
+        rec_App_sd = np.std(sg_app)
+        
+        Arnd_avg = np.mean(sg_arnd)
+        rec_Arnd_sd = np.std(sg_arnd)
+        
+        Putt_avg = np.mean(sg_putt)
+        rec_Putt_sd = np.mean(sg_putt)
+    else:
+        Tee_avg = None
+        rec_Tee_sd = None
+        App_avg = None
+        rec_App_sd = None
+        Arnd_avg = None
+        rec_Arnd_sd = None
+        Putt_avg = None
+        rec_Putt_sd = None
+# add in the standard deviation as well
+    
+    recent.append((field[i], Tee_avg,rec_Tee_sd, App_avg,rec_App_sd, Arnd_avg, rec_Arnd_sd, Putt_avg, rec_Putt_sd))
+    #plyer.append(field[i])
+    #SG_Tee_avg.append(Tee_avg)
+    #SG_App_avg.append(App_avg)
+    #SG_Arnd_avg.append(Arnd_avg)
+    #SG_Putt_avg.append(Putt_avg)
+    
+    
+#We end here with the average SG data for every player in the tournament 
+
+
+#LOOK AT THE CURRENT COURSE TO SEE WHAT THE PLAYER HAS BEEN ABLE TO DO
+query_2 = "SELECT * FROM standings WHERE name = %s AND tournament_id = %s"
+
+# find all the tournament ids with the same course 
+temp_query ="SELECT record_id FROM tournament_info_2 WHERE course = %s"
+temp_samp = (course,)
+mycursor.execute(temp_query,temp_samp)
+ids = mycursor.fetchall()
+
+#step thorugh each player, find their history at the course
+
+course_history=[]
+for j in range(len(field)):
+    #Things we want to save about an indivaidual player, we will average them and list above
+    list_name=[]
+    list_fin=[]
+    list_SG_Tee=[]
+    list_SG_App=[]
+    list_SG_Arnd=[]
+    list_SG_Putt=[]
+        
+    for i in range(len(ids)):
+        #Grab all the data from stadnings table for a given player
+        samp_2 = (field[j], ids[i][0])
+        mycursor.execute(query_2,samp_2)
+        results_2 = mycursor.fetchall()
+        
+        if len(results_2) > 0:
+            list_name.append(results_2[0][3])
+            list_fin.append(results_2[0][2])
+            list_SG_Tee.append(results_2[0][9])
+            list_SG_App.append(results_2[0][10])
+            list_SG_Arnd.append(results_2[0][11])
+            list_SG_Putt.append(results_2[0][12])
+            
+        if len(list_name) > 0:
+            name_tag= list_name[0]
+            hist_avg_fin = np.mean(list_fin)
+            hist_sd_fin = np.std(list_fin)
+            
+            hist_avg_SG_Tee = np.mean(list_SG_Tee)
+            hist_sd_SG_Tee = np.std(list_SG_Tee)
+            
+            hist_avg_SG_App = np.mean(list_SG_App)
+            hist_sd_SG_App = np.std(list_SG_App)
+            
+            hist_avg_SG_Arnd = np.mean(list_SG_Arnd)
+            hist_sd_SG_Arnd = np.std(list_SG_Arnd)
+            
+            hist_avg_SG_Putt = np.mean(list_SG_Putt)
+            hist_sd_SG_Putt = np.std(list_SG_Putt)
+            
+            
+        else:
+            name_tag = None 
+            hist_avg_fin = None
+            hist_sd_fin = None
+            hist_avg_SG_Tee = None
+            hist_sd_SG_Tee = None
+            hist_avg_SG_App = None
+            hist_sd_SG_App = None
+            hist_avg_SG_Arnd = None
+            hist_sd_SG_Arnd = None
+            hist_avg_SG_Putt = None
+            hist_sd_SG_Putt = None
+    
+    course_history.append((name_tag, hist_avg_fin, hist_sd_fin, hist_avg_SG_Tee, hist_sd_SG_Tee, hist_avg_SG_App,hist_sd_SG_App , hist_avg_SG_Arnd, hist_sd_SG_Arnd , hist_avg_SG_Putt, hist_sd_SG_Putt))
+        #print(results_2)
+
+print(len(course_history))
+temp_ch=[]
+for i in range(len(course_history)):
+    if course_history[i][0]  != None:
+        temp_ch.append(course_history[i])
+course_history = temp_ch
+print(len(course_history))
+
+
+# test to compute the best weights
+#in the future this will probably be best to do for the last touranment
+#will have to edit to make that work
+
+#compare the difference and see which one produced the best mean difference and sd
+w1 = np.arange(0,1,0.01)
+w2 = 1-w1
+
+#read in file
+course_file = pd.read_csv('Course_Params_Norms.csv', header= 0, encoding= 'unicode_escape')
+course_name = course_file.iloc[0:,0].tolist()
+#find the index of the current course
+course_ind = course_name.index(course)
+
+tee_param = course_file.iloc[course_ind,1].tolist()
+app_param = course_file.iloc[course_ind,3].tolist()
+ard_param = course_file.iloc[course_ind,5].tolist()
+putt_param = course_file.iloc[course_ind,7].tolist()
+intercept= course_file.iloc[course_ind,9].tolist()
+print(tee_param)
+print(app_param)
+print(ard_param)
+print(ard_param)
+print(putt_param)
+print(intercept)
+
+#get the real stadnings from mySQL
+query = "SELECT Finishing_pos, name FROM standings WHERE tournament_id = 2218"
+mycursor.execute(query)
+real_standings = mycursor.fetchall()
+
+mean_sd_dif=[]
+
+for k in range(len(w1)):
+    outputs=[]
+    for i in range(len(recent)):
+        player_name = recent[i][0]
+        #index func doesnt work because of tuple, find the index in course_history of the pkayer manually
+        for j in range(len(course_history)):
+            if course_history[j][0] == player_name:
+                #only if the player is in this list
+            
+                model_out_1 = w1[k]*(intercept+course_history[j][3]*tee_param +course_history[j][5]*app_param +course_history[j][7]*ard_param +course_history[j][9]*putt_param )
+                model_out_2 = w2[k]*(intercept+recent[i][1]*tee_param +recent[i][3]*app_param +recent[i][5]*ard_param +recent[i][7]*putt_param )
+                model_out = model_out_1+model_out_2
+                # Add error to the model
+            
+                outputs.append((player_name,model_out))
+    #put the model in a sorted fashion by porjected output            
+    sorted_model=sorted(outputs, key=lambda x: x[1])
+    #here we will want to compute the list of differences between the projected standings and the real standing
+    dif_list=[]
+    for h in range(len(real_standings)):
+        for ii in range(len(sorted_model)):
+            if real_standings[h][1] == sorted_model[ii][0]:
+                dif = abs(real_standings[h][0] - sorted_model[ii][1])
+                dif_list.append(dif)
+    
+    mean_sd_dif.append((np.mean(dif_list),np.std(dif_list),w1[k],w2[k]))
+
+
+#model_out_1+model_out_2
+mean_dif=[]
+sd_dif=[]
+w1=[]
+w2=[]
+for i in range(len(mean_sd_dif)):
+    mean_dif.append(mean_sd_dif[i][0])
+    sd_dif.append(mean_sd_dif[i][1])
+    w1.append(mean_sd_dif[i][2])
+    w2.append(mean_sd_dif[i][3])
+    
+    
+ plt.plot(w1,mean_dif,'r.',label='Mean')
+plt.plot(w1,sd_dif,'b.',label='St. Dev')
+plt.xlabel('w1 - course history parameter')
+plt.ylabel('Mean Difference of Actual to Projected Result')
+plt.legend()
+plt.grid()
+
+
+# Now look at the plot and pick what may be the best weights
+
+# Run the model with the best weights picked out
+
+w1=0.6 #course_history parameter
+w2=0.4 #recent performance parameter
+
+if w1+w2 != 1:
+    print('ERROR: WEIGHTS NOT CORRECT')
+
+#read in file
+course_file = pd.read_csv('Course_Params_Norms.csv', header= 0, encoding= 'unicode_escape')
+course_name = course_file.iloc[0:,0].tolist()
+#find the index of the current course
+course_ind = course_name.index(course)
+
+tee_param = course_file.iloc[course_ind,1].tolist()
+app_param = course_file.iloc[course_ind,3].tolist()
+ard_param = course_file.iloc[course_ind,5].tolist()
+putt_param = course_file.iloc[course_ind,7].tolist()
+intercept= course_file.iloc[course_ind,9].tolist()
+
+#get all of the first entries of the course_history, will make it easier for finding the specific indices
+outputs=[]
+for i in range(len(recent)):
+    player_name = recent[i][0]
+    #index func doesnt work because of tuple, find the index in course_history of the pkayer manually
+    for j in range(len(course_history)):
+        if course_history[j][0] == player_name:
+            #only if the player is in this list
+            
+            model_out_1 = w1*(intercept+course_history[j][3]*tee_param +course_history[j][5]*app_param +course_history[j][7]*ard_param +course_history[j][9]*putt_param )
+            model_out_2 = w2*(intercept+recent[i][1]*tee_param +recent[i][3]*app_param +recent[i][5]*ard_param +recent[i][7]*putt_param )
+            model_out = model_out_1+model_out_2
+            
+            # Add error to the model
+            model_err_sqr = (w1**2)*((tee_param*course_history[j][4])**2 + (app_param*course_history[j][6])**2 + (ard_param*course_history[j][8])**2 + (putt_param*course_history[j][10])**2)+(w2**2)*((tee_param*recent[i][2])**2 + (app_param*recent[i][4])**2 + (ard_param*recent[i][6])**2 + (putt_param*recent[i][8])**2)
+            model_err = model_err_sqr**0.5
+            outputs.append((player_name,model_out,model_err))
+
+
+### Issue here from the fact that if the player doesn't have a course history, they will not get added to the result
+
+sorted_model=sorted(outputs, key=lambda x: x[1])
+
+sorted_model
+
+file_write = 'Sorted_Model_Output.csv'
+with open(file_write,'w',newline='') as f:
+    thewriter = csv.writer(f)
+    
+    thewriter.writerow(['Name' ,'Finishing Projection','Finishing Projection SD'])
+    for i in range(0,len(sorted_model)):
+        thewriter.writerow([sorted_model[i][0],sorted_model[i][1],sorted_model[i][2]])
