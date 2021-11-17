@@ -1,0 +1,111 @@
+## INFORMATION
+
+#This is script meant to be utilized at the beginning of every new golf season.
+#The purpose is to scrape together all of the new tournaments for the upcoming
+#seaon and add them the the 'golf' dataabase in MySQL.
+
+#This script is based off of the 'Tournamen_Base_Scrape' script previously writen
+
+## Important Flaws:
+
+#1) Please note that if the tournament information is blank, there may be an issue. For example, if the course name is not defined on the website, the script will run, however, the course name will be defined as the purse the value.
+
+#As of 11/6/2021, in this event, you will have to manually change this to unkown.
+
+#ARN- 11/6/2021
+
+
+#2) New data will be entered with 'No data available in both the PGA_web_code and ESPN_web_code field. While the ESPN webcode has to be manually filled each time, there exists a routine "somewhere" that will automatically fill in the PGA_web_codes. This functionality is not yet integrated, but should be at a later date.
+
+#ARN- 11/6/2021
+
+
+import pandas as pd
+import numpy as np
+import csv
+import os
+import mysql.connector
+
+url = 'https://www.pgatour.com/tournaments/schedule.html'
+#url associated with location of schedule
+#seemingly the new schedule is always updated to this url, however, shoudl check
+
+df = pd.read_html(url, header = 0)
+#read dataframe
+df_tourn = df[1]
+#define the dataframe
+
+#Create array to save to
+dates=[]
+yr = []
+tourn_name = []
+courses =[]
+champ =[]
+money = []
+
+
+
+#step through each tournamnet
+for ii in range(len(df_tourn)):
+        
+    #grab dates
+    date_range = df_tourn.iloc[ii,0]
+    #grab course info
+    course = df_tourn.iloc[ii,1]
+    #grab winner info
+    winner = df_tourn.iloc[ii,4]
+        
+    #Now we need to format all this info
+    #start with course info
+    coi_split = course.split('  ')
+    tourny = coi_split[0]
+    coi_split = coi_split[1].split(',')
+    c_name = coi_split[0]
+    courses.append(c_name)
+    tourn_name.append(tourny)
+        
+    #Now lets go for the winner
+    win_name = 'NaN'
+    win_dollars = 'NaN'
+    champ.append(win_name)
+    money.append(win_dollars)            
+        
+    #add in the dates
+    dates.append(date_range)
+    yr.append('2022')
+    
+    
+db = mysql.connector.connect(
+    host = "localhost",
+    user = "root",
+    passwd = "",
+    database = "")
+
+mycursor = db.cursor()
+
+
+# code adapted from 'Standings_Database_Update_Jup'
+
+max_command = "SELECT MAX(record_id) FROM tournament_info_2"
+#get the max recorded value currently
+mycursor.execute(max_command)
+max_val =mycursor.fetchall()[0]
+# record what the max vlue is
+
+
+nums_2 = np.linspace(max_val[0]+1, max_val[0]+len(courses),len(courses))
+#create an array of values that will become the record_id for the new information
+nums =[]
+#balnk array for saving
+for i in range(len(nums_2)):
+    a = int(nums_2[i])
+    nums.append(a)
+#force the numbers to be integers
+
+
+sqlcmd = "INSERT INTO tournament_info_2 (record_id, year, name, course, PGA_web_code, ESPN_web_code) VALUES (%s, %s, %s, %s, %s, %s)"
+
+for i in range(len(courses)):
+    record = (nums[i],yr[i],tourn_name[i],courses[i],'No Data Available Yet','No Data Available Yet')
+    mycursor.execute(sqlcmd, record)
+    db.commit()
