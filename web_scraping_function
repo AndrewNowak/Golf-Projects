@@ -30,7 +30,7 @@ def database_update(inp):
     second_result = [second_result[1], second_result[5], second_result[9],second_result[10]]
     
 
-    
+    # enter the record id from the table tournament_info_2
     samp = (inp,)
     query ="SELECT record_id, year, PGA_web_code, ESPN_web_code  FROM tournament_info_2 WHERE record_id = %s"
     mycursor.execute(query,samp)
@@ -42,208 +42,221 @@ def database_update(inp):
     PGA_code = first_result[2]
     tournament_id = first_result[0]
     #assign the elements to seperate variable. 
+    if ESPN_code != 'No Data Available Yet' and PGA_code != 'No Data Available Yet':
     
-    mycursor.execute("SELECT code_name, code_value FROM pga_web_codes")
-    second_result = mycursor.fetchall()
+        mycursor.execute("SELECT code_name, code_value FROM pga_web_codes")
+        second_result = mycursor.fetchall()
 
-    second_result = [second_result[1], second_result[5], second_result[9],second_result[10]]
+        second_result = [second_result[1], second_result[5], second_result[9],second_result[10]]
 
-    #same thing for the URLs in order to pull SG data
+        #same thing for the URLs in order to pull SG data
     
     
-    sample_ESPN_url ="https://www.espn.com/golf/leaderboard/_/tournamentId/{}" 
-    sample_PGA_url ="https://www.pgatour.com/content/pgatour/stats/stat.{}.y{}.eon.t{}.html" 
-    #template of URLs that information will be located in
+        sample_ESPN_url ="https://www.espn.com/golf/leaderboard/_/tournamentId/{}" 
+        sample_PGA_url ="https://www.pgatour.com/content/pgatour/stats/stat.{}.y{}.eon.t{}.html" 
+        #template of URLs that information will be located in
     
-    fin_tournament_id=[]
-    fin_Finishing_pos=[]
-    fin_name=[]
-    fin_To_Par=[]
-    fin_R=[]
-    fin_SG_OTT = []
-    fin_SG_Approach=[]
-    fin_SG_Around=[]
-    fin_SG_putt=[]
-    #create arrays that will eventually store all of the final infromation
+        fin_tournament_id=[]
+        fin_Finishing_pos=[]
+        fin_name=[]
+        fin_To_Par=[]
+        fin_R=[]
+        fin_SG_OTT = []
+        fin_SG_Approach=[]
+        fin_SG_Around=[]
+        fin_SG_putt=[]
+        #create arrays that will eventually store all of the final infromation
 
-    ESPN = sample_ESPN_url.format(ESPN_code)
-    #define the ESPN URL in full now 
-    try:
-        df = pd.read_html(ESPN)
-    except:
-        print("ESPN table not found", tournament_id)
-    #try to locate the data frame, if there is one available 
+        ESPN = sample_ESPN_url.format(ESPN_code)
+     #define the ESPN URL in full now 
+        try:
+            df = pd.read_html(ESPN)
+        except:
+            print("ESPN table not found", tournament_id)
+        #try to locate the data frame, if there is one available 
 
-    if len(df) == 1:
-        df_tab = df[0]
-    elif len(df) == 2:
-        df_tab = df[1]
-    
+        if len(df) == 1:
+            df_tab = df[0]
+        elif len(df) == 2:
+            df_tab = df[1]
+        
+
     #If there is a playoff to end the tournament, a second dataframe will appear before the targeted table.
     #In which case we want the second.
 
-    try:
-        pos = df_tab.iloc[0:,0].tolist()
-        ESPN_plyer_name = df_tab.iloc[0:,1].tolist()
-        to_par = df_tab.iloc[0:,2].tolist()
-        R1 = df_tab.iloc[0:,3].tolist()
-        R2 = df_tab.iloc[0:,4].tolist()
-        R3 = df_tab.iloc[0:,5].tolist()
-        R4 = df_tab.iloc[0:,6].tolist()
-    except:
-        print("ESPN table incorrect format", tournament_id)
-    # Pull all of the useful infromation we can from the ESPN table
+        try:
+            pos = df_tab.iloc[0:,1].tolist()
+            ESPN_plyer_name = df_tab.iloc[0:,2].tolist()
+            to_par = df_tab.iloc[0:,3].tolist()
+            R1 = df_tab.iloc[0:,4].tolist()
+            R2 = df_tab.iloc[0:,5].tolist()
+            R3 = df_tab.iloc[0:,6].tolist()
+            R4 = df_tab.iloc[0:,7].tolist()
+        except:
+            print("ESPN table incorrect format", tournament_id)
+        # Pull all of the useful infromation we can from the ESPN table
 
-    try:
-        for j in range(len(second_result)):
-            PGA = sample_PGA_url.format(second_result[j][1], yr, PGA_code)
-            pga_df = pd.read_html(PGA)
-            df_tab_pga = pga_df[1]
-            #Grab the data frame for the SG data from the PGA website.
-            #We must iterate across j once for each SG page
+        try:
+            for j in range(len(second_result)):
+                PGA = sample_PGA_url.format(second_result[j][1], yr, PGA_code)
+                pga_df = pd.read_html(PGA)
+                df_tab_pga = pga_df[1]
+                #Grab the data frame for the SG data from the PGA website.
+                #We must iterate across j once for each SG page
             
             
-            pga_plyer_name = df_tab_pga.iloc[0:,2].tolist()
-            stat =  df_tab_pga.iloc[0:,4].tolist()
-            #Pull the name and the statisitic we are targeting
+                pga_plyer_name = df_tab_pga.iloc[0:,2].tolist()
+                stat =  df_tab_pga.iloc[0:,4].tolist()
+                #Pull the name and the statisitic we are targeting
 
-# at this point we have two lists of names. One from the ESPN page (ESPN_plyer_name), and 
-#one from the PGA site (pga_plyer_name).
-#The PGA list does NOT contain cut players so it shoud be shorter 
+    # at this point we have two lists of names. One from the ESPN page (ESPN_plyer_name), and 
+    #one from the PGA site (pga_plyer_name).
+    #The PGA list does NOT contain cut players so it shoud be shorter 
 
-#We begin by compaoring lists and accumulating the stats for the players who appear in both lists
-            for k in range(len(ESPN_plyer_name)):
-                ESPN_ind = k
-                #We have the index of the ESPN player list
-                PGA_ind = pga_plyer_name.index(ESPN_plyer_name[k]) if ESPN_plyer_name[k] in pga_plyer_name else None 
-                            #locate the indice of the player in the PGA list
-                if PGA_ind != None:
-                    stat_val = stat[PGA_ind]
-                    #Save the value of the stat from PGA site
-                    name = ESPN_plyer_name[k]
-                    to_par_val = to_par[k]
-                    pos_val = pos[k]
-                    R1_val = R1[k] 
-                    R2_val = R2[k]
-                    R3_val = R3[k]
-                    R4_val = R4[k]
-                #Save the rest of the information from ESPN page
+    #We begin by compaoring lists and accumulating the stats for the players who appear in both lists
+                for k in range(len(ESPN_plyer_name)):
+                    ESPN_ind = k
+                    #We have the index of the ESPN player list
+                    PGA_ind = pga_plyer_name.index(ESPN_plyer_name[k]) if ESPN_plyer_name[k] in pga_plyer_name else None 
+                                #locate the indice of the player in the PGA list
+                    if PGA_ind != None:
+                        stat_val = stat[PGA_ind]
+                        #Save the value of the stat from PGA site
+                        name = ESPN_plyer_name[k]
+                        to_par_val = to_par[k]
+                        pos_val = pos[k]
+                        R1_val = R1[k] 
+                        R2_val = R2[k]
+                        R3_val = R3[k]
+                        R4_val = R4[k]
+                    #Save the rest of the information from ESPN page
                 
                         
-                    if j == 0:
-                        fin_tournament_id.append(tournament_id)
-                        fin_Finishing_pos.append(pos_val)
-                        fin_name.append(name)
-                        fin_To_Par.append(to_par_val)
-                        fin_R.append([R1_val,R3_val,R2_val,R4_val])
-                        fin_SG_OTT.append(stat_val)
-                    elif j == 1:
-                        fin_SG_Approach.append(stat_val)
-                    elif j == 2:
-                        fin_SG_Around.append(stat_val)
-                    elif j == 3:
-                        fin_SG_putt.append(stat_val)
-                #Deciding which SG category to save it to 
+                        if j == 0:
+                            fin_tournament_id.append(tournament_id)
+                            fin_Finishing_pos.append(pos_val)
+                            fin_name.append(name)
+                            fin_To_Par.append(to_par_val)
+                            fin_R.append([R1_val,R3_val,R2_val,R4_val])
+                            fin_SG_OTT.append(stat_val)
+                        elif j == 1:
+                            fin_SG_Approach.append(stat_val)
+                        elif j == 2:
+                            fin_SG_Around.append(stat_val)
+                        elif j == 3:
+                            fin_SG_putt.append(stat_val)
+                    #Deciding which SG category to save it to 
 ##################################################################################################            
-                else:
-                    stat_val = math.nan
-                    #Save the value of the stat from PGA site
-                    name = ESPN_plyer_name[k]
-                    to_par_val = math.nan
-                    pos_val = math.nan
-                    R1_val = R1[k] 
-                    R2_val = R2[k]
-                    R3_val = R3[k]
-                    R4_val = R4[k]
-                #Save the rest of the information from ESPN page
+                    else:
+                        stat_val = math.nan
+                        #Save the value of the stat from PGA site
+                        name = ESPN_plyer_name[k]
+                        to_par_val = math.nan
+                        pos_val = math.nan
+                        R1_val = R1[k] 
+                        R2_val = R2[k]
+                        R3_val = R3[k]
+                        R4_val = R4[k]
+                    #Save the rest of the information from ESPN page
                 
                         
-                    if j == 0:
-                        fin_tournament_id.append(tournament_id)
-                        fin_Finishing_pos.append(pos_val)
-                        fin_name.append(name)
-                        fin_To_Par.append(to_par_val)
-                        fin_R.append([R1_val,R3_val,R2_val,R4_val])
-                        fin_SG_OTT.append(999)
-                    elif j == 1:
-                        fin_SG_Approach.append(999)
-                    elif j == 2:
-                        fin_SG_Around.append(999)
-                    elif j == 3:
-                        fin_SG_putt.append(999)
-                #Deciding which SG category to save it to 
+                        if j == 0:
+                            fin_tournament_id.append(tournament_id)
+                            fin_Finishing_pos.append(pos_val)
+                            fin_name.append(name)
+                            fin_To_Par.append(to_par_val)
+                            fin_R.append([R1_val,R3_val,R2_val,R4_val])
+                            fin_SG_OTT.append(999)
+                        elif j == 1:
+                            fin_SG_Approach.append(999)
+                        elif j == 2:
+                            fin_SG_Around.append(999)
+                        elif j == 3:
+                            fin_SG_putt.append(999)
+                    #Deciding which SG category to save it to 
                 
         
         
 ##################################################################################################                            
-    except:
-        print("error", tournament_id, "could not get PGA table")
+        except:
+            print("error", tournament_id, "could not get PGA table")
         
         
         
         
-    pos_int =[] #New array to store finishing positions
-    for i in range(len(fin_Finishing_pos)): #iterate the process for all elements of position
-        x = fin_Finishing_pos[i] #Define the variable we are on
-        if type(x) == str:
-            if x[0] == 'T': # Check to see if the beginning key is a T, for tie
-                y = x[1:] #If there is a T, we only care about everything that comes after
-                z=int(y) #Convert what remians to an integer
-                pos_int.append(z) #Store the remianing integer position
-            elif x[0] == '-':
-                y = math.nan
-                pos_int.append(y)
+        pos_int =[] #New array to store finishing positions
+        for i in range(len(fin_Finishing_pos)): #iterate the process for all elements of position
+            x = fin_Finishing_pos[i] #Define the variable we are on
+            if type(x) == str:
+                if x[0] == 'T': # Check to see if the beginning key is a T, for tie
+                    y = x[1:] #If there is a T, we only care about everything that comes after
+                    z=int(y) #Convert what remians to an integer
+                    pos_int.append(z) #Store the remianing integer position
+                elif x[0] == '-':
+                    #y = math.nan
+                    pos_int.append(999)
+                else:
+                    z=int(x) # If there was no T, convert what we have to an integer
+                    pos_int.append(z) #Add to finishing postiion lis
             else:
-                z=int(x) # If there was no T, convert what we have to an integer
-                pos_int.append(z) #Add to finishing postiion lis
-        else:
-            pos_int.append(999)
+                pos_int.append(999)
             
             
             
 
-    # We need to convert all of the 'To_Par' that are Even, given as E, to zero. And convert all the values to ingetegers
-    update_fin_To_Par=[]
-    for i in range(len(fin_To_Par)):
-        if fin_To_Par[i] == 'E':
-            t = 0
-        else:
-            if fin_To_Par[i] == 'CUT' or fin_To_Par[i] == 'WD' or type(fin_To_Par[i]) == float:
-                t= 999
+        # We need to convert all of the 'To_Par' that are Even, given as E, to zero. And convert all the values to ingetegers
+        update_fin_To_Par=[]
+        for i in range(len(fin_To_Par)):
+            if fin_To_Par[i] == 'E':
+                t = 0
             else:
-                t = int(float(fin_To_Par[i]))
+                if fin_To_Par[i] == 'CUT' or fin_To_Par[i] == 'WD' or fin_To_Par[i] == 'MDF' or fin_To_Par[i] == 'Cut' or type(fin_To_Par[i]) == float:
+                    t= 999
+                else:
+                    t = int(float(fin_To_Par[i]))
     
-        update_fin_To_Par.append(t)
+            update_fin_To_Par.append(t)
         
         
-    temp_R =[]
-    for i in range(len(fin_R)):
-        for j in range(len(fin_R[0])):
-            if fin_R[i][j] == '--':
-                fin_R[i][j] = 999
-        test = fin_R[i][0]
-        if test == 'F':
-            temp_R.append([0, fin_R[i][1],fin_R[i][2],fin_R[i][3]])
+        temp_R =[]
+        for i in range(len(fin_R)):
+            for j in range(len(fin_R[0])):
+                if fin_R[i][j] == '--':
+                    fin_R[i][j] = 999
+            test = fin_R[i][0]
+            if test == 'F':
+                temp_R.append([0, fin_R[i][1],fin_R[i][2],fin_R[i][3]])
+            else:
+                temp_R.append([fin_R[i][0], fin_R[i][1],fin_R[i][2],fin_R[i][3]])
+            
+            
+            
+    #max_command = "SELECT MAX(record_id) FROM standings_new"
+    #mycursor.execute(max_command)
+    #max_val =mycursor.fetchall()[0]
+        
+        max_command = "SELECT MAX(record_id) FROM standings_new"
+        mycursor.execute(max_command)
+        max_try = mycursor.fetchall()[0]
+        if max_try[0] == None:
+            max_val = (0,)
         else:
-            temp_R.append([fin_R[i][0], fin_R[i][1],fin_R[i][2],fin_R[i][3]])
-            
-            
-            
-    max_command = "SELECT MAX(record_id) FROM standings_new"
-    mycursor.execute(max_command)
-    max_val =mycursor.fetchall()[0]
+            max_val = max_try
 
 
-    nums_2 = np.linspace(max_val[0]+1, max_val[0]+len(fin_tournament_id),len(fin_tournament_id))
-    nums =[]
-    for i in range(len(nums_2)):
-        a = int(nums_2[i])
-        nums.append(a)
+        nums_2 = np.linspace(max_val[0]+1, max_val[0]+len(fin_tournament_id),len(fin_tournament_id))
+        nums =[]
+        for i in range(len(nums_2)):
+            a = int(nums_2[i])
+            nums.append(a)
         
     
-    sqlcmd = "INSERT INTO standings_new (record_id, tournament_id, Finishing_pos, name, To_Par, R1, R2, R3, R4, SG_OFF_TEE, SG_APPROACH, SG_AROUND, SG_PUTT) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        sqlcmd = "INSERT INTO standings_new (record_id, tournament_id, Finishing_pos, name, To_Par, R1, R2, R3, R4, SG_OFF_TEE, SG_APPROACH, SG_AROUND, SG_PUTT) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
-    for i in range(len(fin_tournament_id)):
-        record = (nums[i], fin_tournament_id[i], pos_int[i],fin_name[i],update_fin_To_Par[i],temp_R[i][0],temp_R[i][2],temp_R[i][1],temp_R[i][3],fin_SG_OTT[i],fin_SG_Approach[i],fin_SG_Around[i],fin_SG_putt[i])
-        mycursor.execute(sqlcmd, record)
-        db.commit()
+        for i in range(len(fin_tournament_id)):
+            record = (nums[i], fin_tournament_id[i], pos_int[i],fin_name[i],update_fin_To_Par[i],temp_R[i][0],temp_R[i][2],temp_R[i][1],temp_R[i][3],fin_SG_OTT[i],fin_SG_Approach[i],fin_SG_Around[i],fin_SG_putt[i])
+            mycursor.execute(sqlcmd, record)
+            db.commit()
+    else:
+        print("Error: PGA or ESPN Table is not available")
+    
