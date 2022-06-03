@@ -1,3 +1,8 @@
+#When importing data from SQL database, 999 values indicate a cut player
+#Occassional error where only zeros import
+#This function removes those errors
+
+
 def db_clean(golf_data):
     data=[]
     for i in range(len(golf_data)):
